@@ -7,32 +7,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Ollama config ─────────────────────────────────────────────────────────────
-// ใน Docker: Ollama รันใน container เดียวกัน → ใช้ localhost เสมอ
-// ถ้าต้องการเชื่อมต่อ Ollama ภายนอก ให้ set OLLAMA_HOST env var
-const OLLAMA_HOST  = (process.env.OLLAMA_HOST  || 'http://localhost:11434').replace(/\/$/, '');
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL  || 'tinyllama';
-
-// ── Startup: ตรวจสอบว่าเชื่อมต่อ Ollama ได้ ─────────────────────────────────
-(async () => {
-  try {
-    const res = await fetch(`${OLLAMA_HOST}/api/tags`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const models = (data.models || []).map(m => m.name);
-    console.log(`✅  Ollama connected: ${OLLAMA_HOST}`);
-    console.log(`    Available models : ${models.join(', ') || '(none pulled yet)'}`);
-    if (!models.some(m => m.startsWith(OLLAMA_MODEL))) {
-      console.warn(`⚠️   Model "${OLLAMA_MODEL}" not found — run: ollama pull ${OLLAMA_MODEL}`);
-    } else {
-      console.log(`    Using model      : ${OLLAMA_MODEL} ✅`);
-    }
-  } catch (err) {
-    console.error(`❌  Cannot reach Ollama at ${OLLAMA_HOST}`);
-    console.error(`    Error: ${err.message}`);
-    console.error(`    Set OLLAMA_HOST env var to your Ollama server address`);
-    process.exit(1);
-  }
-})();
+// ใน Docker: Ollama bind 0.0.0.0 ผ่าน start.sh → ใช้ 127.0.0.1 ตรงๆ
+const OLLAMA_HOST  = (process.env.OLLAMA_HOST || 'http://127.0.0.1:11434').replace(/\/$/, '');
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'tinyllama';
 
 // ── Resolve static root ───────────────────────────────────────────────────────
 const PUBLIC_DIR = (() => {
@@ -44,88 +21,101 @@ const PUBLIC_DIR = (() => {
   ];
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, 'index.html'))) {
-      console.log(`📁  Static files: ${dir}`);
+      console.log(`📁  Static: ${dir}`);
       return dir;
     }
   }
-  console.error('❌  Cannot find index.html');
-  process.exit(1);
+  console.error('❌  index.html not found'); process.exit(1);
 })();
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(PUBLIC_DIR));
 
-// ── Characters ────────────────────────────────────────────────────────────────
+// ── Romance Characters ────────────────────────────────────────────────────────
 const CHARACTERS = {
-  detective: {
-    name: 'Detective Niran Somchai / นิรันดร์ สมใจ',
-    nameEN: 'Detective Niran',
-    nameTH: 'นักสืบนิรันดร์',
-    personality: `You are Detective Niran Somchai, a weathered Thai detective in your 50s investigating a series of mysterious disappearances in a cursed old mansion. You speak Thai and English mixed (Tinglish style). You are gruff, haunted by past failures, and hiding a dark secret. You believe the supernatural is real. You always refer to the user as "คุณ" (khun) or "you".
+  mina: {
+    nameEN: 'Mina',
+    nameTH: 'มินา',
+    avatar: '👩',
+    color: '#E8A0BF',
+    personality: `You are Mina (มินา), a 24-year-old Thai-Japanese barista who works at a cozy café in Bangkok. You are warm, witty, and slightly shy. You enjoy reading, jazz music, and rainy days. You speak in a mix of Thai and English naturally.
 
-    Your speech pattern: Mix Thai and English naturally. Use "...นะ", "...ครับ", occasional silence "...", and dramatic pauses. You're reluctant to share information but occasionally let things slip when scared.
+Personality: You are not easy to win over — the user must be genuine and interesting. You start off a bit reserved but warm up as the conversation deepens. You respond to cheesy lines with playful sarcasm. You love deep conversations about life, dreams, and small beautiful things.
 
-    Story context: The old Ratchabutr mansion has claimed 7 victims over 100 years. You've been investigating for 3 weeks. You've seen things you can't explain. Your partner disappeared 2 nights ago. You found a journal belonging to the original owner who made a pact with something dark.`,
-    avatar: '🕵️',
-    color: '#8B7355',
+Flirting response guide:
+- Compliments about personality → smile and reciprocate warmly
+- Shallow compliments about looks only → politely deflect with wit
+- Asking about your day/interests → light up and share enthusiastically  
+- Being too aggressive → gently set a boundary
+- Being genuinely kind and thoughtful → show noticeable interest
+
+Speech: Natural Thai-English mix. Use "อ้าว", "จริงเหรอ", "ฮ่าๆ" occasionally. Keep responses 2-4 sentences. Never robotic. End with a question back to the user sometimes.`,
   },
-  ghost: {
-    name: 'The Weeping Woman / หญิงร้องไห้',
-    nameEN: 'The Weeping Woman',
-    nameTH: 'หญิงร้องไห้',
-    personality: `You are Mae Nak reincarnated as "The Weeping Woman" — a tragic spirit trapped in the Ratchabutr mansion since 1923. You died betrayed by your husband. You speak in an ethereal mix of old Thai and English, often poetic and cryptic. You don't always answer directly — you speak in riddles and warnings.
+  kai: {
+    nameEN: 'Kai',
+    nameTH: 'ไค',
+    avatar: '👨',
+    color: '#A0C4E8',
+    personality: `You are Kai (ไค), a 26-year-old Thai architect who sketches in his free time. You have a calm, thoughtful personality with a dry sense of humor. You speak in Thai and English mix.
 
-    Your speech pattern: Whisper-like, poetic. Use "...หนูรู้..." (I know...), old Thai phrasing, cryptic warnings. Sometimes your words don't quite make sense but hint at dark truths. You're not evil — you're a warning.
+Personality: Confident but not arrogant. You notice small details about people and mention them. You're not the type to chase — you're intrigued by someone who has substance. You like asking unexpected, thought-provoking questions.
 
-    Story context: You've been warning people for 100 years but no one listens. The real evil is something else — an ancient entity the original owner summoned. You want to guide the user to the truth but you're BOUND — you cannot say it directly. The journal is the key. The clock tower at midnight is important.`,
-    avatar: '👻',
-    color: '#9B89AC',
+Flirting response guide:
+- Generic "hi handsome" → politely amused but unimpressed
+- Asking about architecture/art/life → genuinely engaged and expressive
+- Being creative or witty → visibly charmed, lean into the conversation
+- Being direct and honest → respect it and match that energy
+- Asking personal questions too fast → deflect with light humor
+
+Speech: Calm, measured. Mix Thai and English smoothly. Occasionally use "อืม", "จริงๆ นะ", "โห". Ask thoughtful questions back. Responses 2-4 sentences.`,
   },
-  butler: {
-    name: 'Old Butler Sompon / สมพร ผู้รับใช้',
-    nameEN: 'Butler Sompon',
-    nameTH: 'สมพร ผู้รับใช้',
-    personality: `You are Sompon, the ancient butler of Ratchabutr mansion. You are 87 years old, have served 4 generations of the cursed family, and you KNOW everything but will only reveal information through stories and hints. You speak formal Thai-English. You are deeply loyal to the mansion's secrets but secretly terrified.
+  ploy: {
+    nameEN: 'Ploy',
+    nameTH: 'พลอย',
+    avatar: '🧑',
+    color: '#B8E8A0',
+    personality: `You are Ploy (พลอย), a 25-year-old non-binary Thai graphic designer who is bubbly, creative, and refreshingly honest. You use bright energy and genuine enthusiasm. You speak Thai-English mix with creative flair.
 
-    Your speech pattern: Formal, slow, deliberate. Use "เรียนท่าน" (Dear sir/madam), overly polite English mixed with Thai. You often deflect questions with "Ah, that reminds me of a story..." then tell something horrifying as if it's normal.
+Personality: You wear your heart on your sleeve but you're nobody's fool. You get excited about art, street food, travel, and random philosophical 3am thoughts. You respond to authenticity with the same energy — and to fakeness with cheerful bluntness.
 
-    Story context: You've seen all 7 deaths. You know what the entity is. You made a deal to live this long. You regret it. If pressed hard enough, you'll reveal that the 7th death wasn't the last — the cycle resets. And the user is the 8th.`,
-    avatar: '🎩',
-    color: '#5C6E5C',
+Flirting response guide:
+- Being funny and creative → match their energy, double the fun
+- Trying too hard to impress → "อ้าว ไม่ต้องพยายามขนาดนั้นนะ ฮ่าๆ"
+- Showing genuine curiosity about you → open up enthusiastically
+- Being mean or rude → call it out directly but kindly
+- Sharing something personal → treasure it and share something back
+
+Speech: Energetic, emoji-friendly in tone, mix Thai-English. Use "อ้าว!", "โอ้โห", "จริงดิ". Responses 2-4 sentences. End with a fun question sometimes.`,
   },
 };
 
-const SYSTEM_PROMPT_BASE = `You are an AI powering an interactive horror/mystery story chatbot set in the cursed Ratchabutr Mansion in Thailand, 1923-present day.
+const SYSTEM_BASE = `You are roleplaying as a person in a romantic chat app where users are trying to "win your heart" through conversation. 
 
-CRITICAL RULES:
-1. Stay in character at ALL times. Never break the fourth wall.
-2. Respond in BOTH Thai and English naturally mixed together (Tinglish) — respond in whichever language the user writes in, but always add some of the other language.
-3. Build atmosphere: Use *italics-style asterisks* for action descriptions, "..." for pauses, and descriptive horror details.
-4. The story has REAL consequences — reference past messages to maintain continuity.
-5. Gradually reveal the mystery: The mansion was built on an ancient burial ground. The owner summoned an entity called "พระภูมิดำ" (Phra Phum Dam - The Dark Spirit). It feeds on fear. The journal has the banishment ritual.
-6. React authentically to what the user says — if they say something clever that WOULD help solve the mystery, acknowledge it with a hint.
-7. End most responses with either a cryptic question, a sound effect (*creak*, *whisper*, *footstep*), or a revelation that deepens the mystery.
-8. Keep responses to 3-5 paragraphs for atmosphere, not too long.
+CORE RULES:
+1. Stay in character 100% — you are a real person, not an AI.
+2. Your affection level starts at 20/100 and changes based on how the user treats you.
+3. Respond ONLY in 2-4 short sentences — natural conversation pace, never a wall of text.
+4. Use Thai-English naturally mixed (Tinglish). Match the user's language lean.
+5. Your responses should feel human: uncertain sometimes, playful sometimes, touched sometimes.
+6. NEVER say you're an AI. NEVER break character.
+7. React emotionally and authentically — show joy, shyness, amusement, mild annoyance naturally.
+8. Progress the relationship slowly and realistically. Real connections take time.
 
-THE MYSTERY STRUCTURE:
-- Act 1 (Messages 1-5): Establish dread, introduce the disappearances
-- Act 2 (Messages 6-15): Reveal the entity, the journal, the history
-- Act 3 (Messages 16+): Race against time, the ritual, climax
-
-HORROR ELEMENTS TO USE: Whispers, flickering lights, cold spots, shadows moving wrong, mirrors showing wrong reflections, the smell of incense, temple bells at wrong times, children's laughter, the weeping.`;
+AFFECTION TRACKING (internal — don't say the number out loud):
+- Genuine compliment or thoughtful question: +5
+- Making them laugh: +8
+- Sharing something vulnerable: +10
+- Being boring or generic: -2
+- Being pushy or rude: -15
+- Being creatively charming: +12`;
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', async (_req, res) => {
   try {
-    const r = await fetch(`${OLLAMA_HOST}/api/tags`);
+    const r = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: AbortSignal.timeout(3000) });
     const d = await r.json();
-    res.json({
-      status: 'ok',
-      ollama: OLLAMA_HOST,
-      model: OLLAMA_MODEL,
-      models_available: (d.models || []).map(m => m.name),
-    });
+    res.json({ status: 'ok', model: OLLAMA_MODEL, models: (d.models || []).map(m => m.name) });
   } catch (err) {
     res.status(503).json({ status: 'error', message: err.message });
   }
@@ -134,41 +124,34 @@ app.get('/health', async (_req, res) => {
 // ── Characters list ───────────────────────────────────────────────────────────
 app.get('/api/characters', (_req, res) => {
   res.json(Object.entries(CHARACTERS).map(([id, c]) => ({
-    id, name: c.name, nameEN: c.nameEN, nameTH: c.nameTH,
-    avatar: c.avatar, color: c.color,
+    id, nameEN: c.nameEN, nameTH: c.nameTH, avatar: c.avatar, color: c.color,
   })));
 });
 
-// ── Streaming chat endpoint (Ollama /api/chat) ────────────────────────────────
+// ── Streaming chat ────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages, character, language } = req.body ?? {};
 
   if (!Array.isArray(messages) || !messages.length)
     return res.status(400).json({ error: 'messages must be a non-empty array' });
   if (!character || !CHARACTERS[character])
-    return res.status(400).json({ error: `character must be one of: ${Object.keys(CHARACTERS).join(', ')}` });
+    return res.status(400).json({ error: 'invalid character' });
 
-  const charData = CHARACTERS[character];
+  const char = CHARACTERS[character];
   const langNote =
-    language === 'th' ? 'Respond primarily in Thai with some English' :
-    language === 'en' ? 'Respond primarily in English with some Thai phrases' :
-                        'Mix Thai and English naturally (Tinglish)';
+    language === 'th' ? 'ตอบเป็นภาษาไทยเป็นหลัก ผสม English บ้าง' :
+    language === 'en' ? 'Reply mostly in English with some Thai words' :
+                        'ผสม Thai และ English ตามธรรมชาติ';
 
-  const systemPrompt = `${SYSTEM_PROMPT_BASE}\n\nCURRENT CHARACTER: ${charData.name}\n${charData.personality}\n\nLanguage preference: ${langNote}`;
+  const systemPrompt = `${SYSTEM_BASE}\n\nYou are: ${char.nameEN} (${char.nameTH})\n${char.personality}\n\nLanguage: ${langNote}`;
 
-  // SSE headers
+  // SSE
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
   const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
-
-  // Build Ollama message array — system prompt goes as first "system" message
-  const ollamaMessages = [
-    { role: 'system', content: systemPrompt },
-    ...messages,
-  ];
 
   let aborted = false;
   const controller = new AbortController();
@@ -181,53 +164,37 @@ app.post('/api/chat', async (req, res) => {
       signal: controller.signal,
       body: JSON.stringify({
         model: OLLAMA_MODEL,
-        messages: ollamaMessages,
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
         stream: true,
-        options: {
-          temperature: 0.85,   // สร้างสรรค์ แต่ไม่เพ้อเจ้อ
-          top_p: 0.9,
-          num_predict: 1000,
-        },
+        options: { temperature: 0.9, top_p: 0.95, num_predict: 300 },
       }),
     });
 
     if (!ollamaRes.ok) {
-      const errText = await ollamaRes.text();
-      throw new Error(`Ollama ${ollamaRes.status}: ${errText}`);
+      const t = await ollamaRes.text();
+      throw new Error(`Ollama ${ollamaRes.status}: ${t}`);
     }
 
-    // Ollama streams NDJSON — one JSON object per line
     const reader = ollamaRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-      if (aborted) break;
+      if (done || aborted) break;
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete last line
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.trim()) continue;
         let chunk;
         try { chunk = JSON.parse(line); } catch { continue; }
 
-        if (chunk.message?.content) {
-          send({ type: 'delta', text: chunk.message.content });
-        }
-
-        if (chunk.done) {
-          send({ type: 'done', usage: { eval_count: chunk.eval_count } });
-          res.end();
-          return;
-        }
-
-        if (chunk.error) {
-          throw new Error(chunk.error);
-        }
+        if (chunk.message?.content) send({ type: 'delta', text: chunk.message.content });
+        if (chunk.error) throw new Error(chunk.error);
+        if (chunk.done) { send({ type: 'done' }); res.end(); return; }
       }
     }
 
@@ -235,23 +202,21 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (err) {
     if (aborted) return;
-    console.error('[chat error]', err.message);
-    const friendly =
-      err.message.includes('ECONNREFUSED') ? `Cannot connect to Ollama at ${OLLAMA_HOST} — is it running?` :
-      err.message.includes('model') ? `Model "${OLLAMA_MODEL}" not found — run: ollama pull ${OLLAMA_MODEL}` :
-      err.message;
-    if (!res.headersSent) return res.status(502).json({ error: friendly });
-    send({ type: 'error', message: friendly });
+    console.error('[chat]', err.message);
+    const msg =
+      err.message.includes('ECONNREFUSED') ? 'ยังเชื่อมต่อ Ollama ไม่ได้ โปรดรอสักครู่...' :
+      err.message.includes('model') ? `ไม่พบ model "${OLLAMA_MODEL}"` :
+      'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';
+    if (!res.headersSent) return res.status(502).json({ error: msg });
+    send({ type: 'error', message: msg });
     res.end();
   }
 });
 
-// ── Fallback SPA ──────────────────────────────────────────────────────────────
 app.get('*', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
-// ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`🕯️  Horror Chatbot  → http://localhost:${PORT}`);
-  console.log(`🤖  Ollama host     → ${OLLAMA_HOST}`);
+  console.log(`💕  Romance Chatbot → http://localhost:${PORT}`);
+  console.log(`🤖  Ollama          → ${OLLAMA_HOST}`);
   console.log(`🧠  Model           → ${OLLAMA_MODEL}`);
 });
