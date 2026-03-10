@@ -28,8 +28,6 @@ RUN npm install --omit=dev
 # Copy app source
 COPY server.js ./
 COPY index.html ./
-COPY public ./public
-
 # Copy startup script
 COPY start.sh ./
 RUN chmod +x start.sh
