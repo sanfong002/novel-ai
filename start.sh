@@ -2,31 +2,30 @@
 set -e
 
 echo "🟡 Starting Ollama server..."
-ollama serve &
-OLLAMA_PID=$!
+OLLAMA_HOST=0.0.0.0:11434 ollama serve &
 
-# Wait until Ollama is ready (max 30s)
-echo "⏳ Waiting for Ollama to be ready..."
-for i in $(seq 1 30); do
-  if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
-    echo "✅ Ollama is ready"
-    break
-  fi
-  if [ $i -eq 30 ]; then
-    echo "❌ Ollama failed to start after 30s"
-    exit 1
-  fi
-  sleep 1
-done
+# ใช้ /proc/net/tcp แทน curl (node:20-slim ไม่มี curl)
+# รอจนกว่า port 11434 จะเปิด (hex: 2C7A = 11386? ไม่ใช่ — ใช้ node แทน)
+echo "⏳ Waiting for Ollama on port 11434..."
+node - << 'JSEOF'
+const net = require('net');
+const MAX = 40;
+let attempts = 0;
+function tryConnect() {
+  const sock = net.createConnection({ port: 11434, host: '127.0.0.1' });
+  sock.on('connect', () => { sock.destroy(); console.log('✅ Ollama is ready'); });
+  sock.on('error', () => {
+    sock.destroy();
+    attempts++;
+    if (attempts >= MAX) { console.error('❌ Ollama not ready after 40s'); process.exit(1); }
+    setTimeout(tryConnect, 1000);
+  });
+}
+tryConnect();
+JSEOF
 
-# Verify tinyllama is available
-echo "🧠 Checking tinyllama model..."
-if ollama list | grep -q "tinyllama"; then
-  echo "✅ tinyllama ready"
-else
-  echo "⚠️  tinyllama not found, pulling now..."
-  ollama pull tinyllama
-fi
+echo "🧠 Verifying tinyllama..."
+ollama list
 
 echo "🕯️  Starting Node.js app..."
 exec node server.js
