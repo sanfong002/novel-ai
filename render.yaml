@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: horror-chatbot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Render free tier: 512MB RAM — tinyllama ใช้ ~400MB พอดี
+    # อัปเกรดเป็น Starter ($7/mo) ถ้าต้องการ model ใหญ่ขึ้น
+    plan: free
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: OLLAMA_HOST
+        value: http://localhost:11434
+      - key: OLLAMA_MODEL
+        value: tinyllama
+    healthCheckPath: /health
+    # Build timeout เพิ่มเป็น 30 นาที เพราะ Docker image มี model อยู่ด้วย
+    numInstances: 1

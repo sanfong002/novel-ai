@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>คฤหาสน์รัชบุตร — Ratchabutr Mansion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=Sarabun:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep: #0a0608;
+      --bg-card: #110d0f;
+      --bg-panel: #160f12;
+      --border: #2a1f22;
+      --border-glow: #5a2020;
+      --red: #8B1A1A;
+      --red-bright: #C0392B;
+      --red-glow: rgba(139,26,26,0.4);
+      --gold: #8B6914;
+      --gold-bright: #D4A017;
+      --text-primary: #E8D5C4;
+      --text-muted: #7A6055;
+      --text-ghost: #9B89AC;
+      --fog: rgba(255,255,255,0.03);
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(60,10,10,0.4) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 60% at 80% 20%, rgba(40,5,40,0.3) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 30% at 50% 50%, rgba(20,10,5,0.5) 0%, transparent 70%);
+      pointer-events: none;
+      animation: fogDrift 20s ease-in-out infinite alternate;
+      z-index: 0;
+    }
+
+    @keyframes fogDrift {
+      0% { opacity: 0.6; transform: scale(1); }
+      100% { opacity: 1; transform: scale(1.05) translateY(-10px); }
+    }
+
+    /* Flickering candle particles */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: var(--gold);
+      border-radius: 50%;
+      animation: floatUp linear infinite;
+      opacity: 0;
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translateY(0) scale(1); }
+      20% { opacity: 0.6; }
+      80% { opacity: 0.2; }
+      100% { opacity: 0; transform: translateY(-100vh) scale(0); }
+    }
+
+    /* LAYOUT */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* HEADER */
+    .header {
+      padding: 20px 0 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+    }
+
+    .mansion-icon {
+      font-size: 32px;
+      display: block;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 0 12px var(--red));
+      animation: flicker 4s ease-in-out infinite;
+    }
+
+    @keyframes flicker {
+      0%, 90%, 100% { opacity: 1; filter: drop-shadow(0 0 12px var(--red)); }
+      92% { opacity: 0.7; filter: drop-shadow(0 0 4px var(--red)); }
+      94% { opacity: 1; filter: drop-shadow(0 0 20px var(--red)); }
+      96% { opacity: 0.8; }
+    }
+
+    .header h1 {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(16px, 3vw, 22px);
+      color: var(--gold-bright);
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 20px var(--gold), 0 0 40px rgba(212,160,23,0.3);
+    }
+
+    .header-sub {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* CHARACTER SELECTOR */
+    .char-selector {
+      display: flex;
+      gap: 8px;
+      padding: 12px 0;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .char-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      color: var(--text-muted);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .char-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.02));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .char-btn:hover::before { opacity: 1; }
+
+    .char-btn.active {
+      border-color: var(--red);
+      color: var(--text-primary);
+      box-shadow: 0 0 20px var(--red-glow), inset 0 0 20px rgba(139,26,26,0.1);
+    }
+
+    .char-btn .avatar {
+      font-size: 20px;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,0.3));
+    }
+
+    .char-name-th { display: block; font-size: 10px; color: var(--text-muted); margin-top: 2px; font-family: 'Sarabun', sans-serif; }
+    .char-btn.active .char-name-th { color: var(--gold); }
+
+    /* CHAT AREA */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Welcome card */
+    .welcome-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-panel));
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      animation: fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .welcome-title {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      color: var(--gold-bright);
+      margin-bottom: 8px;
+      letter-spacing: 0.1em;
+    }
+
+    .welcome-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .welcome-text em {
+      color: var(--text-ghost);
+      font-style: italic;
+    }
+
+    /* Message bubbles */
+    .message {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .message.user {
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      box-shadow: 0 0 12px var(--red-glow);
+    }
+
+    .message.user .msg-avatar {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      box-shadow: 0 0 12px rgba(30,80,150,0.3);
+      font-size: 16px;
+    }
+
+    .msg-bubble {
+      max-width: 75%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-primary);
+      position: relative;
+    }
+
+    .message.user .msg-bubble {
+      background: linear-gradient(135deg, #0d1b2a, #1a2a3a);
+      border-color: #1e3a5f;
+      color: #c8dce8;
+    }
+
+    .msg-bubble::before {
+      content: attr(data-char);
+      display: block;
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .message.user .msg-bubble::before { display: none; }
+
+    /* Action text */
+    .msg-bubble .action {
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: 12px;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 5px;
+      padding: 14px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .typing-dots span {
+      width: 6px;
+      height: 6px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: typingBounce 1.2s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--red);
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* INPUT AREA */
+    .input-area {
+      padding: 16px 0 20px;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+
+    .input-area::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 150px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+    }
+
+    .lang-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      justify-content: flex-end;
+    }
+
+    .lang-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.05em;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      border-color: var(--gold);
+      color: var(--gold-bright);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .msg-input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-family: 'Sarabun', sans-serif;
+      font-size: 14px;
+      resize: none;
+      min-height: 48px;
+      max-height: 120px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .msg-input:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 12px var(--red-glow);
+    }
+
+    .msg-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+    .send-btn {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--red), #6B1010);
+      border: 1px solid var(--border-glow);
+      border-radius: 10px;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--red-glow);
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      box-shadow: 0 0 24px rgba(139,26,26,0.7);
+      transform: scale(1.05);
+    }
+
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* Hint prompts */
+    .hint-prompts {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .hint-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .hint-btn:hover {
+      border-color: var(--red);
+      color: var(--text-primary);
+      background: rgba(139,26,26,0.1);
+    }
+
+    /* Sound toggle */
+    .sound-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+
+    .sound-btn:hover { color: var(--text-primary); border-color: var(--gold); }
+
+    /* Atmosphere bar */
+    .atmos-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0 10px;
+    }
+
+    .atmos-label {
+      font-family: 'Cinzel', serif;
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .atmos-track {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .atmos-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--red));
+      border-radius: 2px;
+      transition: width 1s ease;
+      box-shadow: 0 0 6px var(--red);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .char-btn { padding: 8px 12px; font-size: 11px; }
+      .msg-bubble { max-width: 90%; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+
+<button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔇 Sound</button>
+
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <span class="mansion-icon">🕯️</span>
+    <h1>Ratchabutr Mansion</h1>
+    <p class="header-sub">คฤหาสน์รัชบุตร · Interactive Horror Story</p>
+
+    <!-- Character Selector -->
+    <div class="char-selector" id="charSelector">
+      <button class="char-btn active" data-char="detective" onclick="selectChar('detective')">
+        <span class="avatar">🕵️</span>
+        <div>
+          <span>Detective Niran</span>
+          <span class="char-name-th">นักสืบนิรันดร์</span>
+        </div>
+      </button>
+      <button class="char-btn" data-char="ghost" onclick="selectChar('ghost')">
+        <span class="avatar">👻</span>
+        <div>
+          <span>The Weeping Woman</span>
+          <span class="char-name-th">หญิงร้องไห้</span>
+        </div>
+      </button>
+      <button class="char-btn" data-char="butler" onclick="selectChar('butler')">
+        <span class="avatar">🎩</span>
+        <div>
+          <span>Butler Sompon</span>
+          <span class="char-name-th">สมพร ผู้รับใช้</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Atmosphere meter -->
+    <div class="atmos-bar">
+      <span class="atmos-label">⚰ Dread Level</span>
+      <div class="atmos-track">
+        <div class="atmos-fill" id="atmosFill" style="width: 10%"></div>
+      </div>
+      <span class="atmos-label" id="atmosPct">10%</span>
+    </div>
+  </header>
+
+  <!-- CHAT -->
+  <div class="chat-container">
+    <div class="messages" id="messages">
+      <div class="welcome-card">
+        <p class="welcome-title">⚠ WARNING / คำเตือน</p>
+        <p class="welcome-text">
+          You have entered the cursed <em>Ratchabutr Mansion</em>.<br>
+          คุณได้เข้าสู่คฤหาสน์รัชบุตรที่ถูกสาปแช่ง<br><br>
+          <em>7 souls have been claimed. The 8th is expected.</em><br>
+          เลือกตัวละครที่ต้องการพูดคุย แล้วเริ่มต้นการสนทนา...
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-area">
+    <!-- Hint buttons -->
+    <div class="hint-prompts" id="hintPrompts">
+      <button class="hint-btn" onclick="sendHint('Who are you? / คุณคือใคร?')">👁 Who are you?</button>
+      <button class="hint-btn" onclick="sendHint('What happened here? / เกิดอะไรขึ้นที่นี่?')">🩸 What happened?</button>
+      <button class="hint-btn" onclick="sendHint('I found a journal. / ฉันพบสมุดบันทึก')">📖 The Journal</button>
+      <button class="hint-btn" onclick="sendHint('I hear something... / ฉันได้ยินบางอย่าง...')">👂 I hear something</button>
+    </div>
+
+    <!-- Language toggle -->
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-lang="mix" onclick="setLang('mix')">TH+EN</button>
+      <button class="lang-btn" data-lang="th" onclick="setLang('th')">ไทย</button>
+      <button class="lang-btn" data-lang="en" onclick="setLang('en')">English</button>
+    </div>
+
+    <div class="input-row">
+      <textarea
+        class="msg-input"
+        id="msgInput"
+        placeholder="พิมพ์ข้อความของคุณ... / Type your message..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">🕯</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // State
+  let selectedChar = 'detective';
+  let language = 'mix';
+  let conversationHistory = [];
+  let dreadLevel = 10;
+  let messageCount = 0;
+  let soundEnabled = false;
+
+  const CHAR_DATA = {
+    detective: { avatar: '🕵️', name: 'Detective Niran', nameTH: 'นักสืบนิรันดร์' },
+    ghost: { avatar: '👻', name: 'The Weeping Woman', nameTH: 'หญิงร้องไห้' },
+    butler: { avatar: '🎩', name: 'Butler Sompon', nameTH: 'สมพร ผู้รับใช้' }
+  };
+
+  // Particles
+  function createParticles() {
+    const container = document.getElementById('particles');
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.animationDuration = (8 + Math.random() * 15) + 's';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      p.style.width = p.style.height = (1 + Math.random() * 3) + 'px';
+      container.appendChild(p);
+    }
+  }
+  createParticles();
+
+  // Character selection
+  function selectChar(char) {
+    selectedChar = char;
+    document.querySelectorAll('.char-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.char === char);
+    });
+    conversationHistory = [];
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = `
+      <div class="welcome-card">
+        <p class="welcome-title">${CHAR_DATA[char].avatar} ${CHAR_DATA[char].name} / ${CHAR_DATA[char].nameTH}</p>
+        <p class="welcome-text">The presence shifts...<br>ความรู้สึกในห้องเปลี่ยนไป...<br><br><em>Speak, if you dare.</em></p>
+      </div>`;
+    dreadLevel = 10;
+    messageCount = 0;
+    updateDread(0);
+  }
+
+  // Language
+  function setLang(lang) {
+    language = lang;
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+  }
+
+  // Send hint
+  function sendHint(text) {
+    document.getElementById('msgInput').value = text;
+    sendMessage();
+  }
+
+  // Key handler
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  // Auto resize
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // Update dread meter
+  function updateDread(increment) {
+    dreadLevel = Math.min(100, dreadLevel + increment);
+    document.getElementById('atmosFill').style.width = dreadLevel + '%';
+    document.getElementById('atmosPct').textContent = Math.round(dreadLevel) + '%';
+  }
+
+  // Format message with actions
+  function formatMessage(text) {
+    return text
+      .replace(/\*([^*]+)\*/g, '<span class="action">*$1*</span>')
+      .replace(/\n/g, '<br>');
+  }
+
+  // Send message — uses SSE streaming
+  async function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    input.value = '';
+    input.style.height = 'auto';
+    messageCount++;
+
+    addMessage('user', text, '👤', '');
+    conversationHistory.push({ role: 'user', content: text });
+
+    // Create AI bubble that we'll stream text into
+    const charInfo = CHAR_DATA[selectedChar];
+    const msgs = document.getElementById('messages');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message ai';
+    msgDiv.innerHTML = `
+      <div class="msg-avatar">${charInfo.avatar}</div>
+      <div class="msg-bubble" data-char="${charInfo.name} / ${charInfo.nameTH}">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>`;
+    msgs.appendChild(msgDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    const bubble = msgDiv.querySelector('.msg-bubble');
+    let fullText = '';
+    let streamStarted = false;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: conversationHistory, character: selectedChar, language }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          let event;
+          try { event = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (event.type === 'delta') {
+            if (!streamStarted) {
+              bubble.innerHTML = ''; // remove typing dots
+              streamStarted = true;
+            }
+            fullText += event.text;
+            bubble.innerHTML = formatMessage(fullText);
+            msgs.scrollTop = msgs.scrollHeight;
+          } else if (event.type === 'done') {
+            conversationHistory.push({ role: 'assistant', content: fullText });
+            updateDread(messageCount < 5 ? 8 : messageCount < 10 ? 12 : 15);
+            if (soundEnabled) playAtmosSound();
+          } else if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        }
+      }
+    } catch (err) {
+      bubble.innerHTML = formatMessage(`*The candle flickers violently*\n\n${err.message}\n\nการเชื่อมต่อถูกรบกวน...`);
+      bubble.style.borderColor = '#5a2020';
+    }
+
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  function addMessage(type, text, avatar, charName) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message ${type}`;
+    div.innerHTML = `
+      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-bubble" ${charName ? `data-char="${charName}"` : ''}>
+        ${formatMessage(text)}
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Sound
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    document.getElementById('soundBtn').textContent = soundEnabled ? '🔊 Sound' : '🔇 Sound';
+  }
+
+  function playAtmosSound() {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(80 + Math.random() * 40, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 1.5);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 1.5);
+    } catch(e) {}
+  }
+</script>
+</body>
+</html>
