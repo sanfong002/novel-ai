@@ -1,10 +1,9 @@
-// Vercel serverless function — Gemini Flash streaming via SSE
-// Gemini ใช้ @google/generative-ai SDK หรือ fetch REST API โดยตรง
-// ใช้ fetch ตรงเพื่อไม่ต้องติดตั้ง dependency เพิ่ม
+// Vercel serverless function — Cerebras streaming via SSE
+// Cerebras ใช้ OpenAI-compatible API — เร็วที่สุดในโลก ~1000 tokens/วินาที
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL   = 'gemini-2.5-flash-preview-04-17';
-const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
+const CEREBRAS_MODEL   = 'llama-3.3-70b';
+const CEREBRAS_URL     = 'https://api.cerebras.ai/v1/chat/completions';
 
 const CHARACTERS = {
   mina: {
@@ -45,8 +44,8 @@ export default async function handler(req) {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set' }), {
+  if (!CEREBRAS_API_KEY) {
+    return new Response(JSON.stringify({ error: 'CEREBRAS_API_KEY not set' }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }
