@@ -1,5 +1,5 @@
-// Vercel serverless function — Cerebras streaming via SSE
-// Cerebras ใช้ OpenAI-compatible API — เร็วที่สุดในโลก ~1000 tokens/วินาที
+// Vercel Edge Function — Cerebras streaming (OpenAI-compatible)
+// เร็วที่สุดในโลก ~1000 tokens/วินาที ฟรี 30 req/นาที
 
 const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
 const CEREBRAS_MODEL   = 'llama-3.3-70b';
@@ -37,23 +37,20 @@ RULES:
 4. React emotionally: show joy, shyness, amusement, mild annoyance naturally.
 5. Progress the relationship slowly and realistically.`;
 
-export const config = { runtime: 'edge' }; // Edge runtime = faster cold start
+export const config = { runtime: 'edge' };
 
 export default async function handler(req) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST')
     return new Response('Method not allowed', { status: 405 });
-  }
 
-  if (!CEREBRAS_API_KEY) {
-    return new Response(JSON.stringify({ error: 'CEREBRAS_API_KEY not set' }), {
+  if (!CEREBRAS_API_KEY)
+    return new Response(JSON.stringify({ error: 'CEREBRAS_API_KEY not set — add it in Vercel Environment Variables' }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });
-  }
 
   let body;
-  try { body = await req.json(); } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
-  }
+  try { body = await req.json(); }
+  catch { return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 }); }
 
   const { messages, character, language } = body ?? {};
 
@@ -70,51 +67,42 @@ export default async function handler(req) {
 
   const systemPrompt = `${SYSTEM_BASE}\n\nYou are: ${char.nameEN} (${char.nameTH})\n${char.personality}\n\nLanguage: ${langNote}`;
 
-  // Convert OpenAI-style messages → Gemini format
-  // Gemini: { role: 'user'|'model', parts: [{ text }] }
-  const geminiContents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
-
-  // SSE stream response
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const enc    = new TextEncoder();
-
-  const send = (data) => writer.write(enc.encode(`data: ${JSON.stringify(data)}\n\n`));
+  const send   = (data) => writer.write(enc.encode(`data: ${JSON.stringify(data)}\n\n`));
 
   (async () => {
     try {
-      const geminiRes = await fetch(GEMINI_URL, {
+      const res = await fetch(CEREBRAS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
+        },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: geminiContents,
-          generationConfig: {
-            temperature: 0.9,
-            topP: 0.95,
-            maxOutputTokens: 300,
-          },
+          model: CEREBRAS_MODEL,
+          stream: true,
+          max_tokens: 300,
+          temperature: 0.9,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+          ],
         }),
       });
 
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
+      if (!res.ok) {
+        const errText = await res.text();
         const friendly =
-          geminiRes.status === 400 ? 'Request ไม่ถูกต้อง — ตรวจสอบ API key' :
-          geminiRes.status === 403 ? 'GEMINI_API_KEY ไม่ถูกต้องหรือไม่มีสิทธิ์' :
-          geminiRes.status === 429 ? 'Rate limit — รอสักครู่แล้วลองใหม่' :
-          `Gemini error ${geminiRes.status}: ${errText}`;
+          res.status === 401 ? 'CEREBRAS_API_KEY ไม่ถูกต้อง — เช็คใน Vercel Environment Variables' :
+          res.status === 429 ? 'Rate limit — รอสักครู่แล้วลองใหม่' :
+          `Cerebras error ${res.status}: ${errText}`;
         await send({ type: 'error', message: friendly });
-        await writer.close();
         return;
       }
 
-      // Gemini SSE: each chunk = "data: {...}\n\n"
-      // chunk.candidates[0].content.parts[0].text = delta text
-      const reader  = geminiRes.body.getReader();
+      const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -129,24 +117,12 @@ export default async function handler(req) {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed.startsWith('data:')) continue;
-
           const payload = trimmed.slice(5).trim();
-          if (!payload || payload === '[DONE]') continue;
-
+          if (payload === '[DONE]') { await send({ type: 'done' }); return; }
           let chunk;
           try { chunk = JSON.parse(payload); } catch { continue; }
-
-          // Extract text delta
-          const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) await send({ type: 'delta', text });
-
-          // Check finish reason
-          const finishReason = chunk.candidates?.[0]?.finishReason;
-          if (finishReason && finishReason !== 'STOP' && finishReason !== '') {
-            if (finishReason === 'SAFETY') {
-              await send({ type: 'error', message: 'ข้อความถูกบล็อกโดย safety filter' });
-            }
-          }
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (delta) await send({ type: 'delta', text: delta });
         }
       }
 
@@ -155,7 +131,7 @@ export default async function handler(req) {
     } catch (err) {
       await send({ type: 'error', message: err.message });
     } finally {
-      await writer.close();
+      await writer.close().catch(() => {});
     }
   })();
 
