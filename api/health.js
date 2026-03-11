@@ -1,8 +1,8 @@
 export default function handler(req, res) {
   res.json({
     status: 'ok',
-    provider: 'cerebras',
-    model: 'llama-3.3-70b',
-    key_set: !!process.env.CEREBRAS_API_KEY,
+    provider: 'openrouter',
+    model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free',
+    key_set: !!process.env.OPENROUTER_API_KEY,
   });
 }

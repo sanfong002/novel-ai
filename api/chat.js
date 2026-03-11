@@ -1,9 +1,9 @@
-// Vercel Edge Function — Cerebras streaming (OpenAI-compatible)
-// เร็วที่สุดในโลก ~1000 tokens/วินาที ฟรี 30 req/นาที
+// Vercel Edge Function — OpenRouter streaming
+// รองรับ 50+ models ฟรี เปลี่ยน model ได้แค่เปลี่ยน OPENROUTER_MODEL
 
-const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
-const CEREBRAS_MODEL   = 'llama-3.3-70b';
-const CEREBRAS_URL     = 'https://api.cerebras.ai/v1/chat/completions';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL   = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+const OPENROUTER_URL     = 'https://openrouter.ai/api/v1/chat/completions';
 
 const CHARACTERS = {
   mina: {
@@ -43,8 +43,8 @@ export default async function handler(req) {
   if (req.method !== 'POST')
     return new Response('Method not allowed', { status: 405 });
 
-  if (!CEREBRAS_API_KEY)
-    return new Response(JSON.stringify({ error: 'CEREBRAS_API_KEY not set — add it in Vercel Environment Variables' }), {
+  if (!OPENROUTER_API_KEY)
+    return new Response(JSON.stringify({ error: 'OPENROUTER_API_KEY not set — add it in Vercel Environment Variables' }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });
 
@@ -74,14 +74,16 @@ export default async function handler(req) {
 
   (async () => {
     try {
-      const res = await fetch(CEREBRAS_URL, {
+      const res = await fetch(OPENROUTER_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://romance-chatbot.vercel.app',
+          'X-Title': 'Romance Chatbot',
         },
         body: JSON.stringify({
-          model: CEREBRAS_MODEL,
+          model: OPENROUTER_MODEL,
           stream: true,
           max_tokens: 300,
           temperature: 0.9,
@@ -95,13 +97,15 @@ export default async function handler(req) {
       if (!res.ok) {
         const errText = await res.text();
         const friendly =
-          res.status === 401 ? 'CEREBRAS_API_KEY ไม่ถูกต้อง — เช็คใน Vercel Environment Variables' :
+          res.status === 401 ? 'OPENROUTER_API_KEY ไม่ถูกต้อง — เช็คใน Vercel Environment Variables' :
+          res.status === 402 ? 'Credit หมดแล้ว — เติม credit ที่ openrouter.ai' :
           res.status === 429 ? 'Rate limit — รอสักครู่แล้วลองใหม่' :
-          `Cerebras error ${res.status}: ${errText}`;
+          `OpenRouter error ${res.status}: ${errText}`;
         await send({ type: 'error', message: friendly });
         return;
       }
 
+      // OpenAI-compatible SSE
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
