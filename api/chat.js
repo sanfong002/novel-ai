@@ -3,7 +3,7 @@
 // ใช้ fetch ตรงเพื่อไม่ต้องติดตั้ง dependency เพิ่ม
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL   = 'gemini-2.0-flash';
+const GEMINI_MODEL   = 'gemini-2.5-flash-preview-04-17';
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
 
 const CHARACTERS = {
